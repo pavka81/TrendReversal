@@ -1,0 +1,11 @@
+HOMEWORK
+Weekly signal is negligible
+The weekly flag (<1%) adds almost no lift. You might consider removing it or engineering a richer weekly feature (e.g. weekly momentum slope) if you want multi-timeframe context.
+CUANDO CORRO EL PASO 10 DE 10. Feature importance analysis, el weekly signal es debil, ver si depues drop the weekly_touch
+
+ 
+Next steps
+•	Prune unused features: Drop weekly_touch and retrain to simplify your model.
+•	Enhance weekly signals: If you still want multi-timeframe inputs, try things like weekly RSI or weekly MACD rather than a binary flag.
+•	Cross-ticker comparison: Repeat this analysis for a handful of other symbols—do the same features dominate, or does the hierarchy shift?
+•	Feature interaction: Explore combining features (e.g. RSI × dist_pct) to capture non-linear effects.
