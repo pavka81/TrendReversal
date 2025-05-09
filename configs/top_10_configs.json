@@ -1,102 +1,62 @@
 [
   {
-    "Config_ID":"CFG_075",
-    "USE_CONFIRMATION_CANDLE":true,
-    "USE_RSI_FILTER":false,
-    "USE_MACD_HIST_FILTER":false,
-    "USE_FORCE_INDEX_FILTER":true,
-    "USE_ATR_FILTER":false,
-    "USE_MACD_DIVERGENCE":true,
-    "USE_TRAILING_EXIT":false
+    "Config_ID": "CFG_097",
+    "Trades": 186,
+    "WinRate": 0.7311827956989247,
+    "AvgReturn": 3.4004323023790923
   },
   {
-    "Config_ID":"CFG_079",
-    "USE_CONFIRMATION_CANDLE":true,
-    "USE_RSI_FILTER":false,
-    "USE_MACD_HIST_FILTER":false,
-    "USE_FORCE_INDEX_FILTER":true,
-    "USE_ATR_FILTER":true,
-    "USE_MACD_DIVERGENCE":true,
-    "USE_TRAILING_EXIT":false
+    "Config_ID": "CFG_101",
+    "Trades": 159,
+    "WinRate": 0.7295597484276729,
+    "AvgReturn": 3.1916284419390797
   },
   {
-    "Config_ID":"CFG_097",
-    "USE_CONFIRMATION_CANDLE":true,
-    "USE_RSI_FILTER":true,
-    "USE_MACD_HIST_FILTER":false,
-    "USE_FORCE_INDEX_FILTER":false,
-    "USE_ATR_FILTER":false,
-    "USE_MACD_DIVERGENCE":false,
-    "USE_TRAILING_EXIT":false
+    "Config_ID": "CFG_113",
+    "Trades": 228,
+    "WinRate": 0.7105263157894737,
+    "AvgReturn": 2.957218086946369
   },
   {
-    "Config_ID":"CFG_101",
-    "USE_CONFIRMATION_CANDLE":true,
-    "USE_RSI_FILTER":true,
-    "USE_MACD_HIST_FILTER":false,
-    "USE_FORCE_INDEX_FILTER":false,
-    "USE_ATR_FILTER":true,
-    "USE_MACD_DIVERGENCE":false,
-    "USE_TRAILING_EXIT":false
+    "Config_ID": "CFG_121",
+    "Trades": 271,
+    "WinRate": 0.6974169741697417,
+    "AvgReturn": 2.764896026773904
   },
   {
-    "Config_ID":"CFG_105",
-    "USE_CONFIRMATION_CANDLE":true,
-    "USE_RSI_FILTER":true,
-    "USE_MACD_HIST_FILTER":false,
-    "USE_FORCE_INDEX_FILTER":true,
-    "USE_ATR_FILTER":false,
-    "USE_MACD_DIVERGENCE":false,
-    "USE_TRAILING_EXIT":false
+    "Config_ID": "CFG_105",
+    "Trades": 267,
+    "WinRate": 0.6966292134831461,
+    "AvgReturn": 2.755096945352065
   },
   {
-    "Config_ID":"CFG_111",
-    "USE_CONFIRMATION_CANDLE":true,
-    "USE_RSI_FILTER":true,
-    "USE_MACD_HIST_FILTER":false,
-    "USE_FORCE_INDEX_FILTER":true,
-    "USE_ATR_FILTER":true,
-    "USE_MACD_DIVERGENCE":true,
-    "USE_TRAILING_EXIT":false
+    "Config_ID": "CFG_117",
+    "Trades": 196,
+    "WinRate": 0.7040816326530612,
+    "AvgReturn": 2.7326147062354154
   },
   {
-    "Config_ID":"CFG_113",
-    "USE_CONFIRMATION_CANDLE":true,
-    "USE_RSI_FILTER":true,
-    "USE_MACD_HIST_FILTER":true,
-    "USE_FORCE_INDEX_FILTER":false,
-    "USE_ATR_FILTER":false,
-    "USE_MACD_DIVERGENCE":false,
-    "USE_TRAILING_EXIT":false
+    "Config_ID": "CFG_125",
+    "Trades": 231,
+    "WinRate": 0.6926406926406926,
+    "AvgReturn": 2.6383942836583874
   },
   {
-    "Config_ID":"CFG_117",
-    "USE_CONFIRMATION_CANDLE":true,
-    "USE_RSI_FILTER":true,
-    "USE_MACD_HIST_FILTER":true,
-    "USE_FORCE_INDEX_FILTER":false,
-    "USE_ATR_FILTER":true,
-    "USE_MACD_DIVERGENCE":false,
-    "USE_TRAILING_EXIT":false
+    "Config_ID": "CFG_109",
+    "Trades": 227,
+    "WinRate": 0.6916299559471366,
+    "AvgReturn": 2.6246393862482864
   },
   {
-    "Config_ID":"CFG_121",
-    "USE_CONFIRMATION_CANDLE":true,
-    "USE_RSI_FILTER":true,
-    "USE_MACD_HIST_FILTER":true,
-    "USE_FORCE_INDEX_FILTER":true,
-    "USE_ATR_FILTER":false,
-    "USE_MACD_DIVERGENCE":false,
-    "USE_TRAILING_EXIT":false
+    "Config_ID": "CFG_081",
+    "Trades": 118,
+    "WinRate": 0.6864406779661016,
+    "AvgReturn": 2.469916679611192
   },
   {
-    "Config_ID":"CFG_127",
-    "USE_CONFIRMATION_CANDLE":true,
-    "USE_RSI_FILTER":true,
-    "USE_MACD_HIST_FILTER":true,
-    "USE_FORCE_INDEX_FILTER":true,
-    "USE_ATR_FILTER":true,
-    "USE_MACD_DIVERGENCE":true,
-    "USE_TRAILING_EXIT":false
+    "Config_ID": "CFG_089",
+    "Trades": 209,
+    "WinRate": 0.69377990430622,
+    "AvgReturn": 2.4471294365847203
   }
 ]
