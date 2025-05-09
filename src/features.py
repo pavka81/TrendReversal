@@ -1,51 +1,66 @@
 # src/features.py
-""" 
-Use relative imports inside src/
-Edit each of your modules in src/ so that they import from each other with . rather than trying to reach a top-level src. For example, at the top of detection.py:
-"""
-from .detection import find_daily_touches
-from .utils     import compute_keltner
-
 import pandas as pd
-from typing import Tuple
+import numpy as np
 
 
-def build_feature_matrix(
-    events: pd.DataFrame,
-    weekly_touches: pd.DataFrame
-) -> Tuple[pd.DataFrame, pd.Series]:
+def build_feature_matrix(events: pd.DataFrame, weekly_df: pd.DataFrame):
     """
-    Construct the feature matrix X and label vector y for model training.
+    Build feature matrix X and labels y from weekly stock data and trade events.
 
     Parameters
     ----------
     events : pd.DataFrame
-        DataFrame of daily touch events (with indicators & labels) indexed by Date;
-        must contain ['Close','KC_lower','EMA11','EMA22','MACD_12_26_9',
-        'MACDs_12_26_9','RSI_14','Elder_Force_Index_2','Reversal'].
-    weekly_touches : pd.DataFrame
-        DataFrame of weekly touch events indexed by Date (only index used).
+        DataFrame with trade events (must include 'Entry Date', 'Ticker', 'Reversal').
+    weekly_df : pd.DataFrame
+        Weekly OHLCV + indicator data, indexed by date.
 
     Returns
     -------
     X : pd.DataFrame
-        Feature matrix with rows aligned to events.index.
-    y : pd.Series
-        Series of labels ('Reversal') aligned to events.index.
+        Feature matrix.
+    y : pd.Series or None
+        Series of labels if 'Reversal' column exists, else None.
     """
-    feats = []
-    for dt, row in events.iterrows():
-        feat = {
-            'dist_pct':      (row['KC_lower'] - row['Close']) / row['KC_lower'],
-            'ema11_diff':    row['Close'] - row['EMA11'],
-            'ema22_diff':    row['Close'] - row['EMA22'],
-            'macd_center':   row['MACD_12_26_9'] - row['MACDs_12_26_9'],
-            'rsi':           row['RSI_14'],
-            'efi':           row['Elder_Force_Index_2'],
-            'weekly_touch':  (dt in weekly_touches.index)
-        }
-        feats.append(feat)
+    features = []
+    labels = []
 
-    X = pd.DataFrame(feats, index=events.index)
-    y = events['Reversal']
+    for _, row in events.iterrows():
+        entry_date = pd.to_datetime(row['Entry Date'])
+
+        # Try to align entry_date with the nearest previous available weekly date
+        if entry_date not in weekly_df.index:
+            # Pick latest row before or equal to entry_date
+            weekly_slice = weekly_df[weekly_df.index <= entry_date]
+            if weekly_slice.empty:
+                continue  # no data available before entry
+            entry_row = weekly_slice.iloc[-1]
+        else:
+            entry_row = weekly_df.loc[entry_date]
+
+        # Extract relevant features (skip NaNs)
+        if entry_row.isna().any():
+            continue
+
+        feature = {
+            'MACD': entry_row.get('MACD_12_26_9', np.nan),
+            'MACDh': entry_row.get('MACDh_12_26_9', np.nan),
+            'MACDs': entry_row.get('MACDs_12_26_9', np.nan),
+            'RSI': entry_row.get('RSI_14', np.nan),
+            'ForceIndex': entry_row.get('Elder_Force_Index_2', np.nan),
+            'EMA11': entry_row.get('EMA11', np.nan),
+            'EMA22': entry_row.get('EMA22', np.nan),
+            'ATR20': entry_row.get('ATR20', np.nan),
+            'KC_lower': entry_row.get('KC_lower', np.nan),
+            'KC_middle': entry_row.get('KC_middle', np.nan),
+            'KC_upper': entry_row.get('KC_upper', np.nan),
+        }
+
+        if np.isnan(list(feature.values())).any():
+            continue
+
+        features.append(feature)
+        labels.append(row['Reversal'] if 'Reversal' in row else None)
+
+    X = pd.DataFrame(features)
+    y = pd.Series(labels, name='Reversal') if 'Reversal' in events.columns else None
     return X, y
