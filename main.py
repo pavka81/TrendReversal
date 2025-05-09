@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 # main.py — orchestrates the full TrendReversal pipeline from one entry-point
 
@@ -13,7 +14,7 @@ from src.utils import load_csv
 from src.analysis import show_feature_importances
 from src.detection import find_daily_touches, find_weekly_touches
 from src.labeling import label_reversals
-from src.features import build_feature_matrix
+from src.features import build_feature_matrixwhite
 from src.model import train_model
 from src.backtest import evaluate_preds, backtest_reversals
 from src.backtest_keltner_2024_debug_summary import generate_report
@@ -39,6 +40,7 @@ def process_ticker(ticker: str):
     )
 
     trades = backtest_reversals(events, df_full, hold_days=1)
+    trades["entry_date"] = trades.index
     print(
         f"  • Trades: {len(trades)}, Win%: {trades['return_pct'].gt(0).mean():.1%}, "
         f"AvgRet: {trades['return_pct'].mean():.1%}, "
@@ -141,6 +143,28 @@ def main():
         str(NOTEBOOKS_DIR / "portfolio_report.ipynb"),
         "--output", str(RESULTS_DIR / "portfolio_report.html")
     ], check=True)
+
+    print("=== Final Step: Consolidating ML trades ===")
+    import pandas as pd
+
+    trade_files = list(RESULTS_DIR.glob("*_trades.csv"))
+    all_trades = []
+    for file in trade_files:
+        df = pd.read_csv(file)
+        df["Ticker"] = file.stem.replace("_trades", "")
+        all_trades.append(df)
+
+    if all_trades:
+        ml_df = pd.concat(all_trades, ignore_index=True)
+        ml_df.rename(columns={
+            'entry_date': 'Entry Date',
+            'exit_date': 'Exit Date',
+            'entry_price': 'Buy Price',
+            'exit_price': 'Sell Price',
+            'return_pct': 'Return %'
+        }, inplace=True)
+        ml_df.to_csv(RESULTS_DIR / "ml_predictions.csv", index=False)
+        print(f"  • Saved consolidated ML predictions to {RESULTS_DIR / 'ml_predictions.csv'}")
 
     print("\n🎉 Pipeline complete via main.py 🎉")
 
