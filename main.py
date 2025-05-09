@@ -1,133 +1,148 @@
 #!/usr/bin/env python
-# main.py — at project root
+# main.py — orchestrates the full TrendReversal pipeline from one entry-point
 
+import runpy
+import subprocess
+import sys
+import argparse
 from pathlib import Path
-import pandas as pd
-
-from src.analysis import show_feature_importances, plot_feature_importances
 
 from sklearn.model_selection import TimeSeriesSplit
-from src.backtest import evaluate_preds, backtest_reversals
-from src.utils    import load_csv
+
+from src.utils import load_csv
+from src.analysis import show_feature_importances
 from src.detection import find_daily_touches, find_weekly_touches
 from src.labeling import label_reversals
 from src.features import build_feature_matrix
-from src.model    import train_model
+from src.model import train_model
+from src.backtest import evaluate_preds, backtest_reversals
+from src.backtest_keltner_2024_debug_summary import generate_report
+from src.generate_portfolio_report import generate_portfolio_notebook
+
+# Base directories
+SCRIPT_ROOT = Path(__file__).resolve().parent
+RESULTS_DIR = SCRIPT_ROOT / "results"
+MODELS_DIR = SCRIPT_ROOT / "models"
+NOTEBOOKS_DIR = SCRIPT_ROOT / "notebooks"
 
 def process_ticker(ticker: str):
-    # 1. Load full daily series
+    print(f"\n→ Processing {ticker}…")
     df_full = load_csv(f"stock_historical_information/daily/{ticker}_daily.csv")
-
-    # 2. Detect touch events
-    daily_events  = find_daily_touches(ticker)
+    daily_events = find_daily_touches(ticker)
     weekly_events = find_weekly_touches(ticker)
 
-    # 3. Label reversals
     touch_dates = daily_events.index.to_list()
-    labeled     = label_reversals(df_full, touch_dates, lookahead=[1, 2])
+    labeled = label_reversals(df_full, touch_dates, lookahead=[1, 2])
 
-    # 4. Merge labels back
     events = daily_events.join(
-        labeled[['Close_t','Reversal','First_Reversal_Day','First_Reversal_Date']]
+        labeled[['Close_t', 'Reversal', 'First_Reversal_Day', 'First_Reversal_Date']]
     )
-    
-    # —— Backtest the reversal signals ——
-    trades  = backtest_reversals(events, df_full, hold_days=1)
 
-    print("\nBacktest summary:")
-    print(f"  Trades executed:     {len(trades)}")
-    print(f"  Win rate:            {trades['return_pct'].gt(0).mean():.2%}")
-    print(f"  Average return:      {trades['return_pct'].mean():.2%}")
-    print(f"  Cumulative return:   {(1 + trades['return_pct']).prod() - 1:.2%}\n")
+    trades = backtest_reversals(events, df_full, hold_days=1)
+    print(
+        f"  • Trades: {len(trades)}, Win%: {trades['return_pct'].gt(0).mean():.1%}, "
+        f"AvgRet: {trades['return_pct'].mean():.1%}, "
+        f"CumulRet: {(1 + trades['return_pct']).prod() - 1:.1%}"
+    )
 
-    # — Save the raw trade list to CSV —
-    results_dir = Path("results")
-    results_dir.mkdir(exist_ok=True)
-    trades.to_csv(results_dir / f"{ticker}_trades.csv")
-    print(f"Saved trade log to {results_dir / (ticker + '_trades.csv')}")       
+    RESULTS_DIR.mkdir(exist_ok=True)
+    trades_file = RESULTS_DIR / f"{ticker}_trades.csv"
+    trades.to_csv(trades_file, index=False)
+    print(f"  • Saved trades to {trades_file}")
 
-    # Debug: show first few events
-    print(f"--- {ticker} sample events ---")
-    print(events.head(5)[['Close','KC_lower','Reversal']])
-
-    # 5. Build features
     X, y = build_feature_matrix(events, weekly_events)
-    print(f"Feature matrix shape: {X.shape}")
-    print("Label distribution:\n", y.value_counts(normalize=True))
-    print("Feature preview:")
-    print(X.head())
+    print(f"  • Feature matrix: {X.shape}, label dist: {y.value_counts(normalize=True).to_dict()}")
 
-    # 6. 5‐fold CV with fixed parameters
     tscv = TimeSeriesSplit(n_splits=5)
     metrics = []
-    print(f"=== Evaluating {ticker} with consensus RF settings ===")
+    print("  • Running 5-fold CV with consensus RF settings…")
     for i, (train_idx, test_idx) in enumerate(tscv.split(X), start=1):
-        X_tr, X_te = X.iloc[train_idx], X.iloc[test_idx]
-        y_tr, y_te = y.iloc[train_idx], y.iloc[test_idx]
-
-        model = train_model(X_tr, y_tr)           # uses your consensus defaults
-        preds  = model.predict(X_te)
-        m      = evaluate_preds(y_te, preds)
-        print(f"Fold {i} — Precision: {m['precision']:.3f}, Recall: {m['recall']:.3f}, F1: {m['f1']:.3f}")
+        model = train_model(X.iloc[train_idx], y.iloc[train_idx])
+        preds = model.predict(X.iloc[test_idx])
+        m = evaluate_preds(y.iloc[test_idx], preds)
+        print(f"    – Fold {i}: Precision {m['precision']:.3f}, Recall {m['recall']:.3f}, F1 {m['f1']:.3f}")
         metrics.append(m)
 
-    # 7. Retrain on the full X,y to get a final model
-    final_model = train_model(X, y)
+    avg = {k: sum(d[k] for d in metrics) / len(metrics) for k in metrics[0]}
+    print(
+        f"  • CV average — Precision {avg['precision']:.3f}, Recall {avg['recall']:.3f}, F1 {avg['f1']:.3f}"
+    )
 
-    # 8. Show & plot importances
-    imps = show_feature_importances(final_model, X.columns.tolist())
+    final_model = train_model(X, y)
+    MODELS_DIR.mkdir(exist_ok=True)
+    model_path = MODELS_DIR / "trend_reversal_rf.pkl"
+
+    import joblib
+    joblib.dump(final_model, model_path)
+    print(f"  • Saved model to {model_path}")
 
     import matplotlib.pyplot as plt
-
-    # grab & sort just the top 7
-    top_imp = imps.head(7).sort_values()
-
+    imps = show_feature_importances(final_model, X.columns.tolist()).head(7).sort_values()
     fig, ax = plt.subplots()
-    top_imp.plot.barh(ax=ax)
-
-    # Center your ticker name in the title
-    ax.set_title(f"{ticker} \n Feature Importances", loc='center')
+    imps.plot.barh(ax=ax)
+    ax.set_title(f"{ticker} — Top Feature Importances", loc='center')
     ax.set_xlabel("Importance")
-
     plt.tight_layout()
-    plt.show()
-
-
-    # 7. Average metrics
-    avg = {k: sum(d[k] for d in metrics) / len(metrics) for k in metrics[0]}
-    print(f"Average for {ticker}: Precision {avg['precision']:.3f}, Recall {avg['recall']:.3f}, F1 {avg['f1']:.3f}\n")
-
-    # in main.py, after final_model = train_model(X,y)
-    import joblib
-    from pathlib import Path
-
-    model_path = Path("models") / "trend_reversal_rf.pkl"
-    model_path.parent.mkdir(exist_ok=True)
-    joblib.dump(final_model, model_path)
-    print(f"Saved model to {model_path}")
+    plot_file = RESULTS_DIR / f"feature_importances_{ticker}.png"
+    fig.savefig(plot_file)
+    plt.close(fig)
+    print(f"  • Saved feature importances plot to {plot_file}")
 
 def main():
-    tickers_path = Path("src/tickers.txt")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--generate-report", action="store_true", help="Generate visual backtest summary and notebook")
+    args = parser.parse_args()
+
+    print("=== Step 1/5: Downloading historical data ===")
+    dl1 = SCRIPT_ROOT / "src" / "download_all_yahoo.py"
+    dl2 = SCRIPT_ROOT / "src" / "download_all_alphavantage.py"
+    if dl1.exists():
+        runpy.run_path(str(dl1), run_name="__main__")
+    elif dl2.exists():
+        runpy.run_path(str(dl2), run_name="__main__")
+    else:
+        raise FileNotFoundError(f"No downloader script at {dl1} or {dl2}")
+
+    print("=== Step 2/5: Hyperparameter tuning (if present) ===")
+    for cand in [SCRIPT_ROOT / "tune_hyperparams.py", SCRIPT_ROOT / "src" / "tune_hyperparams.py"]:
+        if cand.exists():
+            print(f"Running tuning: {cand}")
+            runpy.run_path(str(cand), run_name="__main__")
+            break
+    else:
+        print("No tuning script found; skipping.")
+
+    print("=== Step 3/5: Processing tickers ===")
+    tickers_path = SCRIPT_ROOT / "src" / "tickers.txt"
     if not tickers_path.exists():
-        raise FileNotFoundError(f"No tickers file at {tickers_path}")
-
-    tickers = [
-        line.strip().upper()
-        for line in tickers_path.read_text().splitlines()
-        if line.strip() and not line.startswith("#")
-    ]
+        raise FileNotFoundError(f"Tickers file not found at {tickers_path}")
+    tickers = [t.strip().upper() for t in tickers_path.read_text().splitlines() if t.strip() and not t.startswith("#")]
     print(f"Loaded {len(tickers)} tickers.")
+    for tk in tickers:
+        process_ticker(tk)
 
-    for ticker in tickers:
-        print(f"\nProcessing {ticker}…")
-        process_ticker(ticker)
+    print("=== Step 4/5: Aggregating backtests ===")
+    agg = SCRIPT_ROOT / "src" / "aggregate.py"
+    if agg.exists():
+        runpy.run_path(str(agg), run_name="__main__")
+    else:
+        print("No aggregate script; skipping.")
 
+    if args.generate_report:
+        print("=== Extra Step: Generating strategic analysis report ===")
+        generate_report()
+
+    print("=== Step 5/5: Exporting HTML report ===")
+    generate_portfolio_notebook()
+
+    RESULTS_DIR.mkdir(exist_ok=True)
+    subprocess.run([
+        sys.executable, "-m", "nbconvert", "--to", "html",
+        str(NOTEBOOKS_DIR / "portfolio_report.ipynb"),
+        "--output", str(RESULTS_DIR / "portfolio_report.html")
+    ], check=True)
+
+    print("\n🎉 Pipeline complete via main.py 🎉")
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
